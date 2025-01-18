@@ -2,7 +2,6 @@
 // Name:        src/generic/gridctrl.cpp
 // Purpose:     wxGrid controls
 // Author:      Paul Gammans, Roger Gammans
-// Modified by:
 // Created:     11/04/2001
 // Copyright:   (c) The Computer Surgery (paul@compsurg.co.uk)
 // Licence:     wxWindows licence
@@ -18,7 +17,6 @@
 
 #ifndef WX_PRECOMP
     #include "wx/textctrl.h"
-    #include "wx/dc.h"
     #include "wx/combobox.h"
     #include "wx/settings.h"
     #include "wx/log.h"
@@ -49,7 +47,7 @@ void wxGridCellRenderer::Draw(wxGrid& grid,
     wxColour clr;
     if ( grid.IsThisEnabled() )
     {
-        if ( isSelected )
+        if ( !grid.UsesOverlaySelection() && isSelected )
         {
             if ( grid.HasFocus() )
                 clr = grid.GetSelectionBackground();
@@ -83,7 +81,7 @@ void wxGridCellRenderer::SetTextColoursAndFont(const wxGrid& grid,
     // different coloured text when the grid is disabled
     if ( grid.IsThisEnabled() )
     {
-        if ( isSelected )
+        if ( !grid.UsesOverlaySelection() && isSelected )
         {
             wxColour clr;
             if ( grid.HasFocus() )
@@ -158,6 +156,7 @@ using namespace wxGridPrivate;
 // Enables a grid cell to display a formatted date
 
 wxGridCellDateRenderer::wxGridCellDateRenderer(const wxString& outformat)
+    : wxGridCellStringRenderer()
 {
     if ( outformat.empty() )
     {
@@ -168,11 +167,6 @@ wxGridCellDateRenderer::wxGridCellDateRenderer(const wxString& outformat)
         m_oformat = outformat;
     }
     m_tz = wxDateTime::Local;
-}
-
-wxGridCellRenderer *wxGridCellDateRenderer::Clone() const
-{
-    return new wxGridCellDateRenderer(*this);
 }
 
 wxString wxGridCellDateRenderer::GetString(const wxGrid& grid, int row, int col)
@@ -256,11 +250,6 @@ wxGridCellDateTimeRenderer::wxGridCellDateTimeRenderer(const wxString& outformat
 {
 }
 
-wxGridCellRenderer *wxGridCellDateTimeRenderer::Clone() const
-{
-    return new wxGridCellDateTimeRenderer(*this);
-}
-
 void
 wxGridCellDateTimeRenderer::GetDateParseParams(DateParseParams& params) const
 {
@@ -272,6 +261,19 @@ wxGridCellDateTimeRenderer::GetDateParseParams(DateParseParams& params) const
 // ----------------------------------------------------------------------------
 // wxGridCellChoiceRenderer
 // ----------------------------------------------------------------------------
+
+wxGridCellChoiceRenderer::wxGridCellChoiceRenderer(const wxString& choices)
+    : wxGridCellStringRenderer()
+{
+    if (!choices.empty())
+        SetParameters(choices);
+}
+
+wxGridCellChoiceRenderer::wxGridCellChoiceRenderer(const wxGridCellChoiceRenderer& other)
+    : wxGridCellStringRenderer(other),
+      m_choices(other.m_choices)
+{
+}
 
 wxSize wxGridCellChoiceRenderer::GetMaxBestSize(wxGrid& WXUNUSED(grid),
                                                 wxGridCellAttr& attr,
@@ -307,19 +309,6 @@ void wxGridCellChoiceRenderer::SetParameters(const wxString& params)
 // Renders a number as a textual equivalent.
 // eg data in cell is 0,1,2 ... n the cell could be rendered as "John","Fred"..."Bob"
 
-
-wxGridCellEnumRenderer::wxGridCellEnumRenderer(const wxString& choices)
-{
-    if (!choices.empty())
-        SetParameters(choices);
-}
-
-wxGridCellRenderer *wxGridCellEnumRenderer::Clone() const
-{
-    wxGridCellEnumRenderer *renderer = new wxGridCellEnumRenderer;
-    renderer->m_choices = m_choices;
-    return renderer;
-}
 
 wxString wxGridCellEnumRenderer::GetString(const wxGrid& grid, int row, int col)
 {
@@ -401,7 +390,7 @@ wxGridCellAutoWrapStringRenderer::Draw(wxGrid& grid,
 
 wxArrayString
 wxGridCellAutoWrapStringRenderer::GetTextLines(wxGrid& grid,
-                                               wxDC& dc,
+                                               wxReadOnlyDC& dc,
                                                const wxGridCellAttr& attr,
                                                const wxRect& rect,
                                                int row, int col)
@@ -440,7 +429,7 @@ wxGridCellAutoWrapStringRenderer::GetTextLines(wxGrid& grid,
 }
 
 void
-wxGridCellAutoWrapStringRenderer::BreakLine(wxDC& dc,
+wxGridCellAutoWrapStringRenderer::BreakLine(wxReadOnlyDC& dc,
                                             const wxString& logicalLine,
                                             wxCoord maxWidth,
                                             wxArrayString& lines)
@@ -493,7 +482,7 @@ wxGridCellAutoWrapStringRenderer::BreakLine(wxDC& dc,
 
 
 wxCoord
-wxGridCellAutoWrapStringRenderer::BreakWord(wxDC& dc,
+wxGridCellAutoWrapStringRenderer::BreakWord(wxReadOnlyDC& dc,
                                             const wxString& word,
                                             wxCoord maxWidth,
                                             wxArrayString& lines,
@@ -612,7 +601,7 @@ wxGridCellAutoWrapStringRenderer::GetBestWidth(wxGrid& grid,
 // ----------------------------------------------------------------------------
 
 wxSize wxGridCellStringRenderer::DoGetBestSize(const wxGridCellAttr& attr,
-                                               wxDC& dc,
+                                               wxReadOnlyDC& dc,
                                                const wxString& text)
 {
     dc.SetFont(attr.GetFont());
@@ -809,21 +798,11 @@ void wxGridCellNumberRenderer::SetParameters(const wxString& params)
 wxGridCellFloatRenderer::wxGridCellFloatRenderer(int width,
                                                  int precision,
                                                  int format)
+    : wxGridCellStringRenderer()
 {
     SetWidth(width);
     SetPrecision(precision);
     SetFormat(format);
-}
-
-wxGridCellRenderer *wxGridCellFloatRenderer::Clone() const
-{
-    wxGridCellFloatRenderer *renderer = new wxGridCellFloatRenderer;
-    renderer->m_width = m_width;
-    renderer->m_precision = m_precision;
-    renderer->m_style = m_style;
-    renderer->m_format = m_format;
-
-    return renderer;
 }
 
 wxString wxGridCellFloatRenderer::GetString(const wxGrid& grid, int row, int col)
@@ -846,7 +825,7 @@ wxString wxGridCellFloatRenderer::GetString(const wxGrid& grid, int row, int col
 
     if ( hasDouble )
     {
-        if ( !m_format )
+        if ( m_format.empty() )
         {
             if ( m_width == -1 )
             {
@@ -915,7 +894,7 @@ wxSize wxGridCellFloatRenderer::GetBestSize(wxGrid& grid,
 
 void wxGridCellFloatRenderer::SetParameters(const wxString& params)
 {
-    if ( !params )
+    if ( params.empty() )
     {
         // reset to defaults
         SetWidth(-1);

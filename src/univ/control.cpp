@@ -2,7 +2,6 @@
 // Name:        src/univ/control.cpp
 // Purpose:     universal wxControl: adds handling of mnemonics
 // Author:      Vadim Zeitlin
-// Modified by:
 // Created:     14.08.00
 // Copyright:   (c) 2000 SciTech Software, Inc. (www.scitechsoft.com)
 // Licence:     wxWindows licence
@@ -85,9 +84,11 @@ void wxControl::SetLabel(const wxString& label)
 void wxControl::UnivDoSetLabel(const wxString& label)
 {
     wxString labelOld = m_label;
+    int indexAccelOld = m_indexAccel;
+
     m_indexAccel = FindAccelIndex(label, &m_label);
 
-    if ( m_label != labelOld )
+    if ( ( m_label != labelOld ) || ( m_indexAccel != indexAccelOld ) )
     {
         Refresh();
     }

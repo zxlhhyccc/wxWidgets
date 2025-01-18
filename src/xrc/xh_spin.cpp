@@ -23,6 +23,7 @@ static const long DEFAULT_VALUE = 0;
 static const long DEFAULT_MIN = 0;
 static const long DEFAULT_MAX = 100;
 static const int DEFAULT_INCREMENT = 1;
+static const int DEFAULT_DIGITS = 0;
 
 wxIMPLEMENT_DYNAMIC_CLASS(wxSpinButtonXmlHandler, wxXmlResourceHandler);
 
@@ -77,6 +78,7 @@ static void AddSpinCtrlStyles(wxXmlResourceHandler& handler)
     handler.XRC_ADD_STYLE(wxALIGN_LEFT);
     handler.XRC_ADD_STYLE(wxALIGN_CENTER);
     handler.XRC_ADD_STYLE(wxALIGN_RIGHT);
+    handler.XRC_ADD_STYLE(wxTE_PROCESS_ENTER);
 }
 
 wxIMPLEMENT_DYNAMIC_CLASS(wxSpinCtrlXmlHandler, wxXmlResourceHandler);
@@ -139,6 +141,10 @@ wxObject *wxSpinCtrlDoubleXmlHandler::DoCreateResource()
                     double(GetFloat(wxS("value"), DEFAULT_VALUE)),
                     double(GetFloat(wxS("inc"), DEFAULT_INC)),
                     GetName());
+
+    int digits = GetLong("digits", DEFAULT_DIGITS);
+    if (digits != DEFAULT_DIGITS)
+        control->SetDigits(digits);
 
     SetupWindow(control);
 
